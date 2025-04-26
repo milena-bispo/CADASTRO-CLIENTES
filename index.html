@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de Clientes - Sucesso da Empresa</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
+    h1 { color: #333; }
+    form { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    input, select { width: 100%; padding: 10px; margin-top: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; }
+    button { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background-color: #4CAF50; color: white; }
+    .metrics { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<h1>Cadastro de Clientes</h1>
+
+<form id="clienteForm">
+  <input type="text" id="nome" placeholder="Nome do Cliente" required>
+  <input type="text" id="telefone" placeholder="Telefone" required>
+  <select id="comprou">
+    <option value="Sim">Comprou</option>
+    <option value="Nao">Não comprou</option>
+  </select>
+  <button type="submit">Cadastrar Cliente</button>
+</form>
+
+<h2>Clientes Cadastrados</h2>
+<table id="clientesTable">
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Telefone</th>
+      <th>Comprou?</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="metrics">
+  <h2>Métricas de Sucesso</h2>
+  <p>Total de clientes: <span id="totalClientes">0</span></p>
+  <p>Total que compraram: <span id="clientesCompraram">0</span></p>
+  <p>Taxa de sucesso: <span id="taxaSucesso">0%</span></p>
+</div>
+
+<script>
+  const form = document.getElementById('clienteForm');
+  const clientesTable = document.querySelector('#clientesTable tbody');
+  const totalClientes = document.getElementById('totalClientes');
+  const clientesCompraram = document.getElementById('clientesCompraram');
+  const taxaSucesso = document.getElementById('taxaSucesso');
+
+  let clientes = [];
+
+  form.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const nome = document.getElementById('nome').value;
+    const telefone = document.getElementById('telefone').value;
+    const comprou = document.getElementById('comprou').value;
+
+    clientes.push({ nome, telefone, comprou });
+    atualizarTabela();
+    form.reset();
+  });
+
+  function atualizarTabela() {
+    clientesTable.innerHTML = '';
+    let compraram = 0;
+
+    clientes.forEach(cliente => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${cliente.nome}</td><td>${cliente.telefone}</td><td>${cliente.comprou}</td>`;
+      clientesTable.appendChild(row);
+
+      if (cliente.comprou === 'Sim') compraram++;
+    });
+
+    totalClientes.textContent = clientes.length;
+    clientesCompraram.textContent = compraram;
+    taxaSucesso.textContent = clientes.length ? ((compraram / clientes.length) * 100).toFixed(2) + '%' : '0%';
+  }
+</script>
+
+</body>
+</html>
