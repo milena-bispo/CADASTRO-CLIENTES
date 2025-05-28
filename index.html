@@ -14,15 +14,17 @@
     th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
     th { background-color: #4CAF50; color: white; }
     .metrics { margin-top: 20px; }
+    .error { color: red; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
 <h1>Cadastro de Clientes</h1>
 
-<form id="clienteForm">
+<form id="clienteForm" novalidate>
+  <div id="errorMsg" class="error"></div>
   <input type="text" id="nome" placeholder="Nome do Cliente" required>
-  <input type="text" id="telefone" placeholder="Telefone" required>
+  <input type="text" id="telefone" placeholder="Telefone (apenas números)" required>
   <select id="comprou">
     <option value="Sim">Comprou</option>
     <option value="Nao">Não comprou</option>
@@ -49,44 +51,6 @@
   <p>Taxa de sucesso: <span id="taxaSucesso">0%</span></p>
 </div>
 
-<script>
-  const form = document.getElementById('clienteForm');
-  const clientesTable = document.querySelector('#clientesTable tbody');
-  const totalClientes = document.getElementById('totalClientes');
-  const clientesCompraram = document.getElementById('clientesCompraram');
-  const taxaSucesso = document.getElementById('taxaSucesso');
-
-  let clientes = [];
-
-  form.addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    const nome = document.getElementById('nome').value;
-    const telefone = document.getElementById('telefone').value;
-    const comprou = document.getElementById('comprou').value;
-
-    clientes.push({ nome, telefone, comprou });
-    atualizarTabela();
-    form.reset();
-  });
-
-  function atualizarTabela() {
-    clientesTable.innerHTML = '';
-    let compraram = 0;
-
-    clientes.forEach(cliente => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${cliente.nome}</td><td>${cliente.telefone}</td><td>${cliente.comprou}</td>`;
-      clientesTable.appendChild(row);
-
-      if (cliente.comprou === 'Sim') compraram++;
-    });
-
-    totalClientes.textContent = clientes.length;
-    clientesCompraram.textContent = compraram;
-    taxaSucesso.textContent = clientes.length ? ((compraram / clientes.length) * 100).toFixed(2) + '%' : '0%';
-  }
-</script>
-
+<script src="main.js"></script>
 </body>
 </html>
