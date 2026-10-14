@@ -5,96 +5,188 @@ const clientesCompraram = document.getElementById('clientesCompraram');
 const taxaSucesso = document.getElementById('taxaSucesso');
 const errorMsg = document.getElementById('errorMsg');
 
-let clientes = [];
-let editIndex = null;
+const nomeInput = document.getElementById('nome');
+const telefoneInput = document.getElementById('telefone');
+const comprouInput = document.getElementById('comprou');
+const submitButton = form.querySelector('button[type="submit"]');
 
-function validarTelefone(telefone) {
-  telefone = telefone.replace(/\D/g, '');
-  if (!(telefone.length === 10 || telefone.length === 11)) return false;
-  if (/^(\d)\1+$/.test(telefone)) return false;
-  const ddd = telefone.substring(0, 2);
-  if (parseInt(ddd, 10) < 11 || parseInt(ddd, 10) > 99) return false;
-  return true;
+const STORAGE_KEY = 'cadastroClientes.v1';
+let clientes = [];
+let editId = null;
+
+// Recupera os registros salvos neste navegador.
+try {
+  const dados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+  if (
+    !Array.isArray(dados) ||
+    !dados.every(cliente =>
+      cliente &&
+      typeof cliente.id === 'string' &&
+      typeof cliente.nome === 'string' &&
+      typeof cliente.telefone === 'string' &&
+      ['Sim', 'Nao'].includes(cliente.comprou)
+    ) ||
+    new Set(dados.map(cliente => cliente.id)).size !== dados.length
+  ) {
+    throw new Error('Dados inválidos');
+  }
+
+  clientes = dados;
+} catch {
+  errorMsg.textContent =
+    'Não foi possível recuperar os cadastros salvos neste navegador.';
 }
 
-form.addEventListener('submit', function(event) {
+function salvarClientes(novaLista) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(novaLista));
+    clientes = novaLista;
+    return true;
+  } catch {
+    errorMsg.textContent =
+      'Não foi possível salvar. Verifique o armazenamento do navegador.';
+    return false;
+  }
+}
+
+function validarTelefone(telefone) {
+  return (
+    /^\d{10,11}$/.test(telefone) &&
+    !/^(\d)\1+$/.test(telefone) &&
+    Number(telefone.slice(0, 2)) >= 11
+  );
+}
+
+function limparFormulario() {
+  form.reset();
+  editId = null;
+  submitButton.textContent = 'Cadastrar Cliente';
+}
+
+form.addEventListener('submit', function (event) {
   event.preventDefault();
   errorMsg.textContent = '';
 
-  const nome = document.getElementById('nome').value.trim();
-  const telefone = document.getElementById('telefone').value.trim();
-  const comprou = document.getElementById('comprou').value;
+  const nome = nomeInput.value.trim().replace(/\s+/g, ' ');
+  const telefone = telefoneInput.value.replace(/\D/g, '');
+  const comprou = comprouInput.value;
 
-  // Validação do nome
-  if (!nome || nome.length < 3 || !/^[A-Za-zÀ-ÿ\s]+$/.test(nome)) {
-    errorMsg.textContent = 'Informe um nome válido (mínimo 3 letras, somente letras e espaços).';
+  if (
+    !/^\p{L}+(?:[ '\u2019-]\p{L}+)*$/u.test(nome) ||
+    (nome.match(/\p{L}/gu) || []).length < 3
+  ) {
+    errorMsg.textContent =
+      'Informe um nome com pelo menos 3 letras.';
     return;
   }
 
   if (!validarTelefone(telefone)) {
-    errorMsg.textContent = 'Informe um telefone válido: DDD + número, 10 ou 11 dígitos, não pode ser todos iguais.';
+    errorMsg.textContent =
+      'Informe o DDD e o telefone com 10 ou 11 dígitos.';
     return;
   }
 
-  if (editIndex !== null) {
-    clientes[editIndex] = { nome, telefone, comprou };
-    editIndex = null;
-    form.querySelector('button[type="submit"]').textContent = 'Cadastrar Cliente';
-  } else {
-    clientes.push({ nome, telefone, comprou });
+  if (!['Sim', 'Nao'].includes(comprou)) {
+    errorMsg.textContent = 'Selecione se o cliente comprou.';
+    return;
   }
+
+  if (editId !== null && !clientes.some(c => c.id === editId)) {
+    errorMsg.textContent =
+      'Este cadastro não está mais disponível. Inicie novamente.';
+    limparFormulario();
+    return;
+  }
+
+  const cliente = {
+    id: editId ?? crypto.randomUUID(),
+    nome,
+    telefone,
+    comprou
+  };
+
+  const novaLista = editId === null
+    ? [...clientes, cliente]
+    : clientes.map(item => item.id === editId ? cliente : item);
+
+  if (!salvarClientes(novaLista)) return;
+
+  limparFormulario();
   atualizarTabela();
-  form.reset();
 });
 
+function criarBotao(texto, classe, acao) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = texto;
+  button.className = `action-btn ${classe}`;
+  button.addEventListener('click', acao);
+  return button;
+}
+
 function atualizarTabela() {
-  clientesTable.innerHTML = '';
-  let compraram = 0;
+  clientesTable.replaceChildren();
 
-  clientes.forEach((cliente, index) => {
+  clientes.forEach(cliente => {
     const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${cliente.nome}</td>
-      <td>${cliente.telefone}</td>
-      <td>${cliente.comprou}</td>
-      <td>
-        <button class="action-btn edit-btn" data-index="${index}">Editar</button>
-        <button class="action-btn delete-btn" data-index="${index}">Remover</button>
-      </td>
-    `;
-    clientesTable.appendChild(row);
 
-    if (cliente.comprou === 'Sim') compraram++;
+    [
+      cliente.nome,
+      cliente.telefone,
+      cliente.comprou === 'Sim' ? 'Sim' : 'Não'
+    ].forEach(valor => {
+      const cell = document.createElement('td');
+      cell.textContent = valor;
+      row.appendChild(cell);
+    });
+
+    const acoes = document.createElement('td');
+
+    acoes.append(
+      criarBotao('Editar', 'edit-btn', () => {
+        preencherFormularioParaEdicao(cliente.id);
+      }),
+      criarBotao('Remover', 'delete-btn', () => {
+        removerCliente(cliente.id);
+      })
+    );
+
+    row.appendChild(acoes);
+    clientesTable.appendChild(row);
   });
+
+  const compraram = clientes.filter(c => c.comprou === 'Sim').length;
 
   totalClientes.textContent = clientes.length;
   clientesCompraram.textContent = compraram;
-  taxaSucesso.textContent = clientes.length ? ((compraram / clientes.length) * 100).toFixed(2) + '%' : '0%';
-
-  // Adicionar eventos aos botões de ação
-  document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const index = parseInt(this.getAttribute('data-index'));
-      preencherFormularioParaEdicao(index);
-    });
-  });
-
-  document.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const index = parseInt(this.getAttribute('data-index'));
-      if (confirm('Deseja remover este cliente?')) {
-        clientes.splice(index, 1);
-        atualizarTabela();
-      }
-    });
-  });
+  taxaSucesso.textContent = clientes.length
+    ? `${((compraram / clientes.length) * 100).toFixed(2)}%`
+    : '0%';
 }
 
-function preencherFormularioParaEdicao(index) {
-  const cliente = clientes[index];
-  document.getElementById('nome').value = cliente.nome;
-  document.getElementById('telefone').value = cliente.telefone;
-  document.getElementById('comprou').value = cliente.comprou;
-  editIndex = index;
-  form.querySelector('button[type="submit"]').textContent = 'Salvar Alteração';
+function preencherFormularioParaEdicao(id) {
+  const cliente = clientes.find(item => item.id === id);
+  if (!cliente) return;
+
+  errorMsg.textContent = '';
+  nomeInput.value = cliente.nome;
+  telefoneInput.value = cliente.telefone;
+  comprouInput.value = cliente.comprou;
+  editId = cliente.id;
+  submitButton.textContent = 'Salvar Alteração';
+  nomeInput.focus();
 }
+
+function removerCliente(id) {
+  if (!confirm('Deseja remover este cliente?')) return;
+
+  errorMsg.textContent = '';
+  const novaLista = clientes.filter(cliente => cliente.id !== id);
+  if (!salvarClientes(novaLista)) return;
+
+  if (editId === id) limparFormulario();
+  atualizarTabela();
+}
+
+atualizarTabela();
